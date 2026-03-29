@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>総当たり戦 管理アプリ</title>
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --surface: #1a1a2e;
+    --card: #16213e;
+    --border: #2a2a4a;
+    --primary: #4f8ef7;
+    --success: #4caf78;
+    --warning: #f7a94f;
+    --text: #e8e8f0;
+    --muted: #8888aa;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, 'Hiragino Kaku Gothic ProN', sans-serif;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .screen { display: none; width: 100%; max-width: 480px; padding: 20px 16px 40px; }
+  .screen.active { display: flex; flex-direction: column; gap: 16px; }
+
+  h1 { font-size: 22px; font-weight: 700; text-align: center; }
+  h2 { font-size: 17px; font-weight: 600; color: var(--muted); text-align: center; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+
+  label { font-size: 13px; color: var(--muted); margin-bottom: 6px; display: block; }
+
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: center;
+  }
+  .stepper button {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 24px;
+    cursor: pointer;
+    line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .stepper button:active { opacity: 0.7; }
+  .stepper .val {
+    font-size: 40px;
+    font-weight: 700;
+    min-width: 60px;
+    text-align: center;
+  }
+
+  .toggle-row {
+    display: flex;
+    gap: 8px;
+  }
+  .toggle-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 15px;
+    cursor: pointer;
+    text-align: center;
+    font-weight: 600;
+    transition: all .15s;
+  }
+  .toggle-btn.on {
+    border-color: var(--primary);
+    background: rgba(79,142,247,0.15);
+    color: var(--primary);
+  }
+
+  .btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: var(--radius);
+    border: none;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  .btn:active { opacity: 0.8; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  .btn-danger { background: #c0392b; color: #fff; }
+
+  /* progress */
+  .progress-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 3px;
+    transition: width .3s;
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* match cards */
+  .match-cards { display: flex; flex-direction: column; gap: 10px; }
+  .match-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .match-card.bye {
+    border-color: var(--warning);
+    background: rgba(247,169,79,0.08);
+    justify-content: center;
+  }
+  .team-name {
+    font-size: 28px;
+    font-weight: 800;
+    min-width: 54px;
+    text-align: center;
+    color: var(--primary);
+  }
+  .vs {
+    font-size: 14px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .court-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: 4px;
+  }
+  .bye-label {
+    font-size: 14px;
+    color: var(--warning);
+  }
+
+  /* history */
+  .history-list { display: flex; flex-direction: column; gap: 6px; }
+  .history-round {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 6px 10px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+  }
+  .history-round .round-num {
+    font-weight: 700;
+    color: var(--text);
+    margin-right: 4px;
+  }
+  .history-match { color: var(--text); }
+  .history-bye { color: var(--warning); }
+
+  /* done screen */
+  .result-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .result-table th, .result-table td {
+    border: 1px solid var(--border);
+    padding: 8px 6px;
+    text-align: center;
+  }
+  .result-table th { background: var(--surface); color: var(--muted); font-weight: 600; }
+  .result-table td.self { background: var(--border); }
+  .result-table td.done { color: var(--success); font-weight: 700; }
+
+  .done-icon { font-size: 64px; text-align: center; }
+
+  details summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 4px 0; }
+  details[open] summary { color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- ===== SETUP ===== -->
+<div id="screen-setup" class="screen active">
+  <h1>⚽ 総当たり戦</h1>
+
+  <div class="card">
+    <label>チーム数</label>
+    <div class="stepper">
+      <button onclick="changeCount(-1)">−</button>
+      <div class="val" id="count-display">6</div>
+      <button onclick="changeCount(+1)">＋</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>チーム名の形式</label>
+    <div class="toggle-row">
+      <div class="toggle-btn on" id="fmt-num" onclick="setFormat('num')">1, 2, 3…</div>
+      <div class="toggle-btn" id="fmt-abc" onclick="setFormat('abc')">A, B, C…</div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="startTournament()">試合開始</button>
+
+  <div id="setup-note" style="font-size:13px;color:var(--muted);text-align:center;"></div>
+</div>
+
+<!-- ===== GAME ===== -->
+<div id="screen-game" class="screen">
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <div id="round-title" style="font-size:20px;font-weight:800;"></div>
+    <div id="round-of" style="font-size:13px;color:var(--muted);"></div>
+  </div>
+
+  <div>
+    <div class="progress-label">
+      <span>進捗</span>
+      <span id="progress-pct"></span>
+    </div>
+    <div class="progress-bar" style="margin-top:4px;">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+  </div>
+
+  <div id="match-cards" class="match-cards"></div>
+
+  <button class="btn btn-primary" id="btn-next" onclick="nextRound()">次のラウンドへ →</button>
+
+  <details>
+    <summary>これまでの試合履歴</summary>
+    <div class="history-list" id="history-list" style="margin-top:8px;"></div>
+  </details>
+
+  <button class="btn btn-secondary" onclick="resetConfirm()">最初からやり直す</button>
+</div>
+
+<!-- ===== DONE ===== -->
+<div id="screen-done" class="screen">
+  <div class="done-icon">🏆</div>
+  <h1>全試合完了！</h1>
+  <h2>おつかれさまでした</h2>
+
+  <div class="card" style="overflow-x:auto;">
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">対戦表</div>
+    <table class="result-table" id="result-table"></table>
+  </div>
+
+  <button class="btn btn-primary" onclick="resetConfirm()">もう一度やる</button>
+</div>
+
+<script>
+const S = {
+  teamCount: 6,
+  format: 'num',
+  rounds: [],
+  current: 0
+};
+
+const KEY = 'tournament-v1';
+
+function teamName(i) {
+  if (S.format === 'abc') return String.fromCharCode(65 + i);
+  return String(i + 1);
+}
+
+function generateSchedule(n) {
+  const odd = n % 2 === 1;
+  const size = odd ? n + 1 : n;
+  const half = size / 2;
+  const rot = Array.from({length: size - 1}, (_, i) => i + 1);
+  const rounds = [];
+  for (let r = 0; r < size - 1; r++) {
+    const circle = [0, ...rot];
+    const matches = [];
+    let bye = -1;
+    for (let i = 0; i < half; i++) {
+      const a = circle[i], b = circle[size - 1 - i];
+      if (a >= n) { bye = b; continue; }
+      if (b >= n) { bye = a; continue; }
+      matches.push([a, b]);
+    }
+    rounds.push({ matches, bye });
+    rot.unshift(rot.pop());
+  }
+  return rounds;
+}
+
+// ---- Setup ----
+function changeCount(d) {
+  S.teamCount = Math.min(20, Math.max(3, S.teamCount + d));
+  document.getElementById('count-display').textContent = S.teamCount;
+  updateSetupNote();
+}
+
+function setFormat(f) {
+  S.format = f;
+  document.getElementById('fmt-num').classList.toggle('on', f === 'num');
+  document.getElementById('fmt-abc').classList.toggle('on', f === 'abc');
+}
+
+function updateSetupNote() {
+  const n = S.teamCount;
+  const rounds = n % 2 === 0 ? n - 1 : n;
+  const matchPerRound = Math.floor(n / 2);
+  const note = document.getElementById('setup-note');
+  note.textContent = `全${rounds}ラウンド・1ラウンドあたり${matchPerRound}試合${n % 2 === 1 ? '（1チームが休み）' : ''}`;
+}
+
+function startTournament() {
+  S.rounds = generateSchedule(S.teamCount);
+  S.current = 0;
+  save();
+  showGame();
+}
+
+// ---- Game ----
+function showGame() {
+  setScreen('game');
+  renderGame();
+}
+
+function renderGame() {
+  const total = S.rounds.length;
+  const cur = S.current;
+  const round = S.rounds[cur];
+
+  document.getElementById('round-title').textContent = `ラウンド ${cur + 1}`;
+  document.getElementById('round-of').textContent = `全${total}ラウンド`;
+
+  const pct = Math.round((cur / total) * 100);
+  document.getElementById('progress-pct').textContent = pct + '%';
+  document.getElementById('progress-fill').style.width = pct + '%';
+
+  // Match cards
+  const container = document.getElementById('match-cards');
+  container.innerHTML = '';
+  round.matches.forEach((m, ci) => {
+    const div = document.createElement('div');
+    div.className = 'match-card';
+    div.innerHTML = `
+      <div style="text-align:center;flex:1;">
+        <div class="court-label">コート ${ci + 1}</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:12px;">
+          <div class="team-name">${teamName(m[0])}</div>
+          <div class="vs">VS</div>
+          <div class="team-name">${teamName(m[1])}</div>
+        </div>
+      </div>`;
+    container.appendChild(div);
+  });
+  if (round.bye >= 0) {
+    const div = document.createElement('div');
+    div.className = 'match-card bye';
+    div.innerHTML = `<span class="bye-label">チーム ${teamName(round.bye)} は今ラウンドお休み</span>`;
+    container.appendChild(div);
+  }
+
+  // Next button
+  const btnNext = document.getElementById('btn-next');
+  if (cur === total - 1) {
+    btnNext.textContent = '全試合終了 🏆';
+    btnNext.className = 'btn btn-primary';
+    btnNext.style.background = 'var(--success)';
+  } else {
+    btnNext.textContent = '次のラウンドへ →';
+    btnNext.style.background = '';
+  }
+
+  // History
+  renderHistory(cur);
+}
+
+function renderHistory(upTo) {
+  const list = document.getElementById('history-list');
+  list.innerHTML = '';
+  for (let r = 0; r < upTo; r++) {
+    const round = S.rounds[r];
+    const div = document.createElement('div');
+    div.className = 'history-round';
+    let html = `<span class="round-num">R${r + 1}</span>`;
+    round.matches.forEach(m => {
+      html += `<span class="history-match">${teamName(m[0])} vs ${teamName(m[1])}</span>　`;
+    });
+    if (round.bye >= 0) {
+      html += `<span class="history-bye">（${teamName(round.bye)} 休）</span>`;
+    }
+    div.innerHTML = html;
+    list.appendChild(div);
+  }
+}
+
+function nextRound() {
+  if (S.current >= S.rounds.length - 1) {
+    showDone();
+    return;
+  }
+  S.current++;
+  save();
+  renderGame();
+}
+
+// ---- Done ----
+function showDone() {
+  setScreen('done');
+  renderResultTable();
+}
+
+function renderResultTable() {
+  const n = S.teamCount;
+  const table = document.getElementById('result-table');
+  let html = '<tr><th></th>';
+  for (let i = 0; i < n; i++) html += `<th>${teamName(i)}</th>`;
+  html += '</tr>';
+  for (let i = 0; i < n; i++) {
+    html += `<tr><th>${teamName(i)}</th>`;
+    for (let j = 0; j < n; j++) {
+      if (i === j) { html += '<td class="self">-</td>'; continue; }
+      // Check if they played
+      let played = false;
+      for (const round of S.rounds) {
+        if (round.matches.some(m => (m[0]===i&&m[1]===j)||(m[0]===j&&m[1]===i))) {
+          played = true; break;
+        }
+      }
+      html += played ? '<td class="done">✓</td>' : '<td></td>';
+    }
+    html += '</tr>';
+  }
+  table.innerHTML = html;
+}
+
+// ---- Util ----
+function setScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+}
+
+function resetConfirm() {
+  if (!confirm('最初からやり直しますか？')) return;
+  localStorage.removeItem(KEY);
+  S.rounds = [];
+  S.current = 0;
+  S.teamCount = 6;
+  S.format = 'num';
+  document.getElementById('count-display').textContent = 6;
+  document.getElementById('fmt-num').classList.add('on');
+  document.getElementById('fmt-abc').classList.remove('on');
+  updateSetupNote();
+  setScreen('setup');
+}
+
+function save() {
+  localStorage.setItem(KEY, JSON.stringify({
+    teamCount: S.teamCount,
+    format: S.format,
+    rounds: S.rounds,
+    current: S.current
+  }));
+}
+
+function load() {
+  const raw = localStorage.getItem(KEY);
+  if (!raw) return false;
+  try {
+    const d = JSON.parse(raw);
+    Object.assign(S, d);
+    return true;
+  } catch { return false; }
+}
+
+// ---- Init ----
+updateSetupNote();
+if (load() && S.rounds.length > 0) {
+  if (S.current >= S.rounds.length) {
+    showDone();
+  } else {
+    showGame();
+  }
+}
+</script>
+</body>
+</html>
